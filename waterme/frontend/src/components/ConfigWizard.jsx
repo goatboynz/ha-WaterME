@@ -1,7 +1,52 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api';
-import { Plus, Save, Trash, Edit2, ChevronLeft, Layout, Droplets } from 'lucide-react';
+import { Plus, Save, Trash, Edit2, ChevronLeft, Layout, Droplets, Clock } from 'lucide-react';
 import EntityPicker from './EntityPicker';
+
+const TimeInput = ({ label, value, onChange }) => {
+    // value is in seconds (float)
+    const minutes = Math.floor(value / 60);
+    const seconds = Math.floor(value % 60);
+
+    const handleMinChange = (v) => {
+        const m = parseInt(v) || 0;
+        onChange(m * 60 + seconds);
+    };
+
+    const handleSecChange = (v) => {
+        const s = parseInt(v) || 0;
+        onChange(minutes * 60 + s);
+    };
+
+    return (
+        <div>
+            <label className="block text-xs text-slate-500 mb-1">{label}</label>
+            <div className="flex items-center gap-2">
+                <div className="flex-1 flex items-center bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
+                    <input
+                        type="number"
+                        min="0"
+                        value={minutes}
+                        onChange={(e) => handleMinChange(e.target.value)}
+                        className="w-full bg-transparent p-2 text-sm text-white focus:outline-none text-right"
+                    />
+                    <span className="text-slate-500 text-xs px-1">m</span>
+                </div>
+                <div className="flex-1 flex items-center bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
+                    <input
+                        type="number"
+                        min="0"
+                        max="59"
+                        value={seconds}
+                        onChange={(e) => handleSecChange(e.target.value)}
+                        className="w-full bg-transparent p-2 text-sm text-white focus:outline-none text-right"
+                    />
+                    <span className="text-slate-500 text-xs px-1">s</span>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 const ConfigWizard = () => {
     const [rooms, setRooms] = useState([]);
@@ -43,11 +88,13 @@ const ConfigWizard = () => {
             zones: [...editingRoom.zones, {
                 id: crypto.randomUUID(),
                 name: `Zone ${editingRoom.zones.length + 1}`,
-                valve_entity: '',
                 pump_entity: '',
+                valve_entity: '',
                 p1_shots: 5,
                 p2_shots: 0,
-                shot_volume_ms: 2000,
+                p1_volume_sec: 2.0,
+                p2_volume_sec: 2.0,
+                valve_delay_ms: 100,
                 stagger_minutes: 0,
                 shots_today: 0,
                 last_shot_time: null
@@ -79,8 +126,15 @@ const ConfigWizard = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Validation: Pump is mandatory
+        const invalidZone = editingRoom.zones.find(z => !z.pump_entity);
+        if (invalidZone) {
+            alert(`Zone "${invalidZone.name}" is missing a Pump Entity. Pump is required.`);
+            return;
+        }
+
         try {
-            // If the room exists in our list, update it
             const exists = rooms.some(r => r.id === editingRoom.id);
             if (exists) {
                 await api.updateRoom(editingRoom.id, editingRoom);
@@ -244,47 +298,71 @@ const ConfigWizard = () => {
                                         </div>
 
                                         <EntityPicker
-                                            label="Valve / Solenoid Entity (switch)"
-                                            value={zone.valve_entity}
-                                            onChange={(val) => updateZone(idx, 'valve_entity', val)}
-                                            domain="switch"
-                                            placeholder="Select valve switch..."
-                                        />
-
-                                        <EntityPicker
-                                            label="Pump Entity (Optional)"
+                                            label="Pump Entity (Required)"
                                             value={zone.pump_entity}
                                             onChange={(val) => updateZone(idx, 'pump_entity', val)}
                                             domain="switch"
                                             placeholder="Select pump switch..."
                                         />
 
-                                        <div className="grid grid-cols-3 gap-4">
-                                            <div>
-                                                <label className="block text-xs text-slate-500 mb-1">P1 Shots</label>
-                                                <input
-                                                    type="number"
-                                                    value={zone.p1_shots}
-                                                    onChange={e => updateZone(idx, 'p1_shots', parseInt(e.target.value) || 0)}
-                                                    className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                                        <EntityPicker
+                                            label="Valve / Solenoid Entity (Optional)"
+                                            value={zone.valve_entity}
+                                            onChange={(val) => updateZone(idx, 'valve_entity', val)}
+                                            domain="switch"
+                                            placeholder="Select valve switch..."
+                                        />
+
+                                        <div>
+                                            <label className="block text-xs text-slate-500 mb-1">Valve delay after Pump (ms)</label>
+                                            <input
+                                                type="number"
+                                                value={zone.valve_delay_ms}
+                                                onChange={e => updateZone(idx, 'valve_delay_ms', parseInt(e.target.value) || 0)}
+                                                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                                            />
+                                        </div>
+
+                                        <div className="md:col-span-2 border-t border-slate-800 pt-4 mt-2">
+                                            <h5 className="text-sm font-semibold text-slate-400 mb-4 flex items-center gap-2">
+                                                <Clock size={14} /> P1 Configuration (Maintenance)
+                                            </h5>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div>
+                                                    <label className="block text-xs text-slate-500 mb-1">P1 Shots Count</label>
+                                                    <input
+                                                        type="number"
+                                                        value={zone.p1_shots}
+                                                        onChange={e => updateZone(idx, 'p1_shots', parseInt(e.target.value) || 0)}
+                                                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                                                    />
+                                                </div>
+                                                <TimeInput
+                                                    label="P1 Shot Duration"
+                                                    value={zone.p1_volume_sec}
+                                                    onChange={(val) => updateZone(idx, 'p1_volume_sec', val)}
                                                 />
                                             </div>
-                                            <div>
-                                                <label className="block text-xs text-slate-500 mb-1">P2 Shots</label>
-                                                <input
-                                                    type="number"
-                                                    value={zone.p2_shots}
-                                                    onChange={e => updateZone(idx, 'p2_shots', parseInt(e.target.value) || 0)}
-                                                    className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-xs text-slate-500 mb-1">Vol (ms)</label>
-                                                <input
-                                                    type="number"
-                                                    value={zone.shot_volume_ms}
-                                                    onChange={e => updateZone(idx, 'shot_volume_ms', parseInt(e.target.value) || 0)}
-                                                    className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                                        </div>
+
+                                        <div className="md:col-span-2 border-t border-slate-800 pt-4">
+                                            <h5 className="text-sm font-semibold text-slate-400 mb-4 flex items-center gap-2">
+                                                <Clock size={14} /> P2 Configuration (Dryback)
+                                            </h5>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div>
+                                                    <label className="block text-xs text-slate-500 mb-1">P2 Shots Count</label>
+                                                    <input
+                                                        type="number"
+                                                        value={zone.p2_shots}
+                                                        onChange={e => updateZone(idx, 'p2_shots', parseInt(e.target.value) || 0)}
+                                                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                                                    />
+                                                </div>
+                                                <TimeInput
+                                                    label="P2 Shot Duration"
+                                                    value={zone.p2_volume_sec}
+                                                    onChange={(val) => updateZone(idx, 'p2_volume_sec', val)}
                                                 />
                                             </div>
                                         </div>

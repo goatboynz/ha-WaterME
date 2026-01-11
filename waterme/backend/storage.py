@@ -10,13 +10,15 @@ logger = logging.getLogger(__name__)
 class Zone(BaseModel):
     id: str
     name: str
-    valve_entity: str
-    pump_entity: Optional[str] = None
+    pump_entity: str  # Now mandatory
+    valve_entity: Optional[str] = None  # Now optional
     p1_shots: int = 0
     p2_shots: int = 0
-    shot_volume_ms: int = 2000
+    p1_volume_sec: float = 1.0
+    p2_volume_sec: float = 1.0
+    valve_delay_ms: int = 50  # Delay after pump starts before valve opens
     stagger_minutes: int = 0
-    # Runtime state (not persisted, but defined here for simplicity of returning objects)
+    # Runtime state (not persisted)
     last_shot_time: Optional[str] = None
     shots_today: int = 0
 

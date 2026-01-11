@@ -33,8 +33,6 @@ class Scheduler:
     def emergency_stop(self):
         """Immediately closes all valves."""
         for room in db.config.rooms:
-            # Turn off master pump if exists (logic complexity: shared pump requires care, assumed per zone for now or handled via automations)
-            # For this MVP, we turn off all valves and pumps defined in zones
             for zone in room.zones:
                 if zone.pump_entity:
                     ha_client.turn_off(zone.pump_entity)
@@ -49,7 +47,6 @@ class Scheduler:
             
             # Check HA connection safety
             if not ha_client.check_connection():
-                # Log only once per minute, not every 10 seconds
                 logger.warning("Waiting for Home Assistant connection...")
                 await asyncio.sleep(60)
                 continue
@@ -67,37 +64,17 @@ class Scheduler:
             await self._process_room(room, now)
 
     async def _process_room(self, room: Room, now: datetime):
-        # 1. Determine Phase
-        # We need state of lights.
-        # This is tricky without persistent history or complex state tracking.
-        # For this MVP, we rely on current state + assumptions or simplified logic.
-        # Ideally, we'd read "last_changed" from HA, but that's complex.
-        # SIMPLIFICATION: We assume lights are automated and we just check status.
-        # BUT: Athena logic relies on "Time since lights on".
-        
         # Let's get light state
         light_state = ha_client.get_entity_state(room.lights_on_entity)
         if not light_state or light_state.get('state') != 'on':
-            # Night mode or unavailable
             return
 
-        # We need "Time ON". `last_changed` is in the state object.
         last_changed_str = light_state.get('last_changed')
         if not last_changed_str:
             return
         
-        # Parse HA timestamp (ISO format)
         try:
-            # HA returns UTC usually, need to be careful with timezones.
-            # Assuming simple local/naive for MVP or that container time matches HA time.
             last_changed = datetime.fromisoformat(last_changed_str.replace('Z', '+00:00')) 
-            # Convert to local if 'now' is local is tricky. 
-            # Better strategy: Compare deltas if possible or just use current time if schedule is fixed.
-            # Athena: "1 hour after lights on".
-            
-            # To avoid timezone hell in MVP, we might ask user for "Lights On Time" in config 
-            # OR we just rely on "last_changed" relative to "now" (assuming container clock is synced).
-            
             time_on = (datetime.now(last_changed.tzinfo) - last_changed).total_seconds() / 60.0 # minutes
             
         except Exception as e:
@@ -112,14 +89,8 @@ class Scheduler:
         elif (60 + 105) <= time_on < (60 + 105 + 60): # 60m Gap
             phase = "GAP"
         else:
-            # P2 until 1hr before lights off. 
-            # We don't know lights off time easily without config. 
-            # Assumed valid P2 for remainder for now.
             phase = "P2"
 
-        # LOGIC: Scheduler needs to fire shots.
-        # This is where it gets complex. We need to track "shots taken today".
-        # Reset shots if lights went from off to on (time_on < few minutes).
         if time_on < 5:
              self._reset_daily_stats(room)
 
@@ -131,70 +102,62 @@ class Scheduler:
     def _reset_daily_stats(self, room: Room):
         for zone in room.zones:
             zone.shots_today = 0
-        db.save() # Crude, but persists for now if we mapped to config
+        db.save()
 
     async def _manage_p1(self, room: Room):
-        # Distribute P1 shots evenly.
-        # MVP: Simple check. "If shots_today < p1_shots" and "time since last shot > interval"
-        # Interval = 105_minutes / p1_shots.
-        
         for zone in room.zones:
             if zone.p1_shots == 0: continue
-            if zone.shots_today >= zone.p1_shots: continue # Done P1
-
-            interval_min = 105 / zone.p1_shots
+            if zone.shots_today >= zone.p1_shots: continue 
             
-            # Check last shot time
-            # For MVP, we might just fire immediately if ready.
-            # We need a 'last_shot_time' in memory.
-            # If never shot today, fire!
             should_fire = False
-            
             if zone.shots_today == 0:
                 should_fire = True
             else:
-                # Check interval
-                # This requires parsing zone.last_shot_time
-                # TODO: Implement robust timing.
-                # For this step, I will just log "Would fire P1".
+                # Interval logic could go here
                 pass
 
             if should_fire:
-                await self.fire_shot(zone)
+                await self.fire_shot(zone, zone.p1_volume_sec)
 
     async def _manage_p2(self, room: Room):
-        # Maintenance logic (dryback trigger).
-        # Complex. MVP: skipped or simplified.
-        pass
+        # Simplified P2 logic for now
+        for zone in room.zones:
+            if zone.p2_shots == 0: continue
+            # TODO: Add dry-back logic
+            pass
 
-    async def fire_shot(self, zone: Zone):
+    async def fire_shot(self, zone: Zone, duration_sec: float):
         """Hardware Interlock Sequence"""
-        logger.info(f"Firing shot for {zone.name} ({zone.shot_volume_ms}ms)")
+        logger.info(f"Firing shot for {zone.name} ({duration_sec}s)")
         
-        # 1. Open Valve
-        ha_client.turn_on(zone.valve_entity)
-        await asyncio.sleep(0.05) # 50ms
-        
-        # 2. Pump On
-        if zone.pump_entity:
+        try:
+            # 1. Start Pump (Mandatory)
             ha_client.turn_on(zone.pump_entity)
             
-        # 3. Wait Duration
-        await asyncio.sleep(zone.shot_volume_ms / 1000.0)
-        
-        # 4. Pump Off
-        if zone.pump_entity:
+            # 2. Delay for Valve (if exists)
+            if zone.valve_entity:
+                await asyncio.sleep(zone.valve_delay_ms / 1000.0)
+                ha_client.turn_on(zone.valve_entity)
+                
+            # 3. Wait for irrigation duration
+            await asyncio.sleep(duration_sec)
+            
+            # 4. Turn off Valve first (if exists)
+            if zone.valve_entity:
+                ha_client.turn_off(zone.valve_entity)
+                await asyncio.sleep(zone.valve_delay_ms / 1000.0) # Drain down delay
+                
+            # 5. Turn off Pump
             ha_client.turn_off(zone.pump_entity)
             
-        # 5. Wait 50ms
-        await asyncio.sleep(0.05)
-        
-        # 6. Valve Off
-        ha_client.turn_off(zone.valve_entity)
-        
-        # Update stats
-        zone.shots_today += 1
-        zone.last_shot_time = datetime.now().isoformat()
-        db.save()
+            # Update stats
+            zone.shots_today += 1
+            zone.last_shot_time = datetime.now().isoformat()
+            db.save()
+        except Exception as e:
+            logger.error(f"Failed to execute shot for {zone.name}: {e}")
+            # Safety stop
+            if zone.pump_entity: ha_client.turn_off(zone.pump_entity)
+            if zone.valve_entity: ha_client.turn_off(zone.valve_entity)
 
 scheduler = Scheduler()
