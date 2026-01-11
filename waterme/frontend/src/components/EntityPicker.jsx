@@ -1,22 +1,41 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
-import { Search, X, ChevronDown } from 'lucide-react';
+import { Search, X, ChevronDown, Loader2, AlertCircle } from 'lucide-react';
 
-const EntityPicker = ({ value, onChange, domain = 'switch', label, placeholder = 'Select entity...' }) => {
+const EntityPicker = ({ value, onChange, domain = 'switch', label, placeholder = 'Search entities...' }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState('');
     const [entities, setEntities] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(false);
     const dropdownRef = useRef(null);
 
+    const loadEntities = async () => {
+        setLoading(true);
+        setError(false);
+        try {
+            const result = await api.getEntities(domain, null);
+            if (!result.entities || result.entities.length === 0) {
+                // If it's empty, maybe it's an error or just no entities of that domain
+                setEntities([]);
+            } else {
+                setEntities(result.entities);
+            }
+        } catch (e) {
+            console.error('Failed to load entities:', e);
+            setError(true);
+            setEntities([]);
+        }
+        setLoading(false);
+    };
+
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && entities.length === 0) {
             loadEntities();
         }
     }, [isOpen, domain]);
 
     useEffect(() => {
-        // Close dropdown when clicking outside
         const handleClickOutside = (event) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setIsOpen(false);
@@ -26,112 +45,106 @@ const EntityPicker = ({ value, onChange, domain = 'switch', label, placeholder =
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const loadEntities = async () => {
-        setLoading(true);
-        try {
-            const result = await api.getEntities(domain, null);
-            setEntities(result.entities || []);
-        } catch (e) {
-            console.error('Failed to load entities:', e);
-            setEntities([]);
-        }
-        setLoading(false);
-    };
-
     const filteredEntities = entities.filter(e => {
         if (!search) return true;
         const searchLower = search.toLowerCase();
         const entityId = e.entity_id || '';
-        const friendlyName = e.attributes?.friendly_name || '';
-        return entityId.toLowerCase().includes(searchLower) ||
-            friendlyName.toLowerCase().includes(searchLower);
+        const friendlyName = (e.attributes?.friendly_name || '').toLowerCase();
+        return entityId.toLowerCase().includes(searchLower) || friendlyName.includes(searchLower);
     });
 
-    const getDisplayName = (entity) => {
-        const friendlyName = entity.attributes?.friendly_name;
-        return friendlyName ? `${friendlyName} (${entity.entity_id})` : entity.entity_id;
+    const getDisplayName = (entityId) => {
+        const entity = entities.find(e => e.entity_id === entityId);
+        if (entity && entity.attributes?.friendly_name) {
+            return entity.attributes.friendly_name;
+        }
+        return entityId;
     };
 
-    const selectedEntity = entities.find(e => e.entity_id === value);
-
     return (
-        <div className="relative" ref={dropdownRef}>
-            {label && <label className="block text-xs text-slate-500 mb-1">{label}</label>}
+        <div className="relative w-full" ref={dropdownRef}>
+            {label && <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 italic">{label}</label>}
 
-            <button
-                type="button"
-                onClick={() => setIsOpen(!isOpen)}
-                className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-left flex items-center justify-between hover:border-blue-500/50 transition-colors"
+            <div
+                className={`relative flex items-center bg-slate-950 border-2 rounded-2xl transition-all duration-300 ${isOpen ? 'border-blue-500 shadow-[0_0_20px_rgba(59,130,246,0.2)]' : 'border-slate-800 hover:border-slate-700'}`}
             >
-                <span className={value ? 'text-white' : 'text-slate-500'}>
-                    {selectedEntity ? getDisplayName(selectedEntity) : (value || placeholder)}
-                </span>
-                <ChevronDown size={16} className={`text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-            </button>
+                <button
+                    type="button"
+                    onClick={() => setIsOpen(!isOpen)}
+                    className="w-full p-4 text-left flex items-center justify-between"
+                >
+                    <span className={`text-sm font-bold truncate ${value ? 'text-white' : 'text-slate-700'}`}>
+                        {value ? getDisplayName(value) : placeholder}
+                    </span>
+                    <ChevronDown size={18} className={`text-slate-600 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {value && !isOpen && (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); onChange(''); }}
+                        className="absolute right-12 text-slate-700 hover:text-red-500 p-2 transition-colors"
+                    >
+                        <X size={14} />
+                    </button>
+                )}
+            </div>
 
             {isOpen && (
-                <div className="absolute z-50 w-full mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-xl max-h-64 overflow-hidden">
-                    <div className="p-2 border-b border-slate-700">
+                <div className="absolute z-[100] w-full mt-2 bg-slate-900 border-2 border-slate-800 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+                    <div className="p-4 bg-slate-950/50 backdrop-blur-xl border-b border-slate-800">
                         <div className="relative">
-                            <Search size={14} className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500" />
+                            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" />
                             <input
                                 type="text"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                placeholder="Search entities..."
-                                className="w-full bg-slate-950 border border-slate-700 rounded pl-7 pr-2 py-1 text-sm focus:outline-none focus:border-blue-500"
+                                placeholder="Filter entities..."
+                                className="w-full bg-slate-900 border-2 border-slate-800 rounded-xl pl-12 pr-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 transition-all font-bold"
                                 autoFocus
                             />
-                            {search && (
-                                <button
-                                    onClick={() => setSearch('')}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
-                                >
-                                    <X size={14} />
-                                </button>
-                            )}
                         </div>
                     </div>
 
-                    <div className="overflow-y-auto max-h-48">
+                    <div className="overflow-y-auto max-h-60 custom-scrollbar">
                         {loading ? (
-                            <div className="p-4 text-center text-slate-500">Loading entities...</div>
+                            <div className="p-10 flex flex-col items-center justify-center gap-4 text-slate-500">
+                                <Loader2 size={24} className="animate-spin text-blue-500" />
+                                <span className="text-[10px] font-black uppercase tracking-widest">Accessing HA API...</span>
+                            </div>
+                        ) : error ? (
+                            <div className="p-10 flex flex-col items-center justify-center gap-4 text-red-500">
+                                <AlertCircle size={24} />
+                                <span className="text-[10px] font-black uppercase tracking-widest">Link Failure</span>
+                                <button onClick={loadEntities} className="text-blue-500 text-[10px] font-bold underline uppercase">Retry Sync</button>
+                            </div>
                         ) : filteredEntities.length === 0 ? (
-                            <div className="p-4 text-center text-slate-500">No entities found</div>
+                            <div className="p-10 text-center">
+                                <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest italic">No matching entities discovered</span>
+                            </div>
                         ) : (
-                            filteredEntities.map((entity) => (
-                                <button
-                                    key={entity.entity_id}
-                                    type="button"
-                                    onClick={() => {
-                                        onChange(entity.entity_id);
-                                        setIsOpen(false);
-                                        setSearch('');
-                                    }}
-                                    className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-800 transition-colors ${value === entity.entity_id ? 'bg-blue-600/20 text-blue-400' : ''
-                                        }`}
-                                >
-                                    <div className="font-medium">{entity.attributes?.friendly_name || entity.entity_id}</div>
-                                    <div className="text-xs text-slate-500">{entity.entity_id}</div>
-                                </button>
-                            ))
+                            <div className="p-2 space-y-1">
+                                {filteredEntities.map((entity) => (
+                                    <button
+                                        key={entity.entity_id}
+                                        type="button"
+                                        onClick={() => {
+                                            onChange(entity.entity_id);
+                                            setIsOpen(false);
+                                            setSearch('');
+                                        }}
+                                        className={`w-full text-left px-4 py-3 rounded-xl transition-all group ${value === entity.entity_id ? 'bg-blue-600 text-white shadow-lg' : 'hover:bg-slate-800/50'}`}
+                                    >
+                                        <div className={`text-sm font-black italic tracking-tight ${value === entity.entity_id ? 'text-white' : 'text-slate-300 group-hover:text-white'}`}>
+                                            {entity.attributes?.friendly_name || entity.entity_id}
+                                        </div>
+                                        <div className={`text-[10px] font-bold ${value === entity.entity_id ? 'text-blue-200' : 'text-slate-600'}`}>
+                                            {entity.entity_id}
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
                         )}
                     </div>
-
-                    {value && (
-                        <div className="p-2 border-t border-slate-700">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    onChange('');
-                                    setIsOpen(false);
-                                }}
-                                className="w-full text-center text-sm text-red-400 hover:text-red-300"
-                            >
-                                Clear selection
-                            </button>
-                        </div>
-                    )}
                 </div>
             )}
         </div>

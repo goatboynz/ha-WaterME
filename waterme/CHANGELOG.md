@@ -1,6 +1,14 @@
 # Changelog
 
-## 0.1.3
+## [0.1.6] - 2026-01-11
+- **UI/UX Overhaul**: Redesigned Dashboard and Config Wizard for a much cleaner, professional "Pro Command" look.
+- **Fixed Layout Issues**: Resolved squashed inputs and overlapping labels in the configuration wizard.
+- **Improved Entity Picker**: Enhanced robustness and styling of the HA entity selection component.
+- **Enhanced Telemetry Display**: Added a dedicated Event Stream sidebar and improved real-time sensor visualization.
+- **Backend Logging**: Added deep logging for HA API communication to assist in debugging connection issues.
+- **Optimization**: Better 12-column grid layout for higher density displays.
+
+## [0.1.5] - 2026-01-11
 - **New Feature**: Fixed Light Schedules. Set explicit ON/OFF times for room photoperiods.
 - **New Feature**: Dripper Telemetry. Input dripper rates and counts to track total ML fed and ML per plant.
 - **New Feature**: Substrate Monitoring. Integrate Soil Moisture (RH) and EC sensors per zone.

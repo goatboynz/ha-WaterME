@@ -50,15 +50,21 @@ async def get_config():
 
 @app.get("/waterme-api/entities")
 async def get_entities(domain: Optional[str] = None, search: Optional[str] = None):
+    logger.info(f"API Request: get_entities domain={domain}, search={search}")
     entities = ha_client.get_all_entities()
-    if entities is None: return {"entities": []}
+    if entities is None: 
+        logger.error("HA Client returned None for entities")
+        return {"entities": []}
     
+    logger.info(f"Filtering {len(entities)} entities...")
     if domain:
         entities = [e for e in entities if e.get("entity_id", "").startswith(f"{domain}.")]
     if search:
         search_lower = search.lower()
         entities = [e for e in entities if search_lower in e.get("entity_id", "").lower() 
                     or search_lower in (e.get("attributes", {}).get("friendly_name", "") or "").lower()]
+    
+    logger.info(f"Returning {len(entities)} entities after filter")
     return {"entities": entities}
 
 @app.post("/waterme-api/rooms")
