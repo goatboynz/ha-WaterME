@@ -3,9 +3,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 from contextlib import asynccontextmanager
+from typing import List, Optional
 
 from backend.storage import db, Room, Zone
 from backend.scheduler import scheduler
+from backend import ha_client
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
@@ -45,10 +47,49 @@ async def get_status():
 async def get_config():
     return db.config
 
+@app.get("/waterme-api/entities")
+async def get_entities(domain: Optional[str] = None, search: Optional[str] = None):
+    """Get entities from Home Assistant, optionally filtered by domain and search term."""
+    entities = ha_client.get_all_entities()
+    if entities is None:
+        return {"entities": [], "error": "Could not connect to Home Assistant"}
+    
+    # Filter by domain if specified
+    if domain:
+        entities = [e for e in entities if e.get("entity_id", "").startswith(f"{domain}.")]
+    
+    # Filter by search term
+    if search:
+        search_lower = search.lower()
+        entities = [e for e in entities if search_lower in e.get("entity_id", "").lower() 
+                    or search_lower in (e.get("attributes", {}).get("friendly_name", "") or "").lower()]
+    
+    return {"entities": entities}
+
 @app.post("/waterme-api/rooms")
 async def add_room(room: Room):
     db.add_room(room)
     return {"status": "ok", "room": room}
+
+@app.put("/waterme-api/rooms/{room_id}")
+async def update_room(room_id: str, room: Room):
+    """Update an existing room."""
+    for i, r in enumerate(db.config.rooms):
+        if r.id == room_id:
+            db.config.rooms[i] = room
+            db.save()
+            return {"status": "ok", "room": room}
+    raise HTTPException(status_code=404, detail="Room not found")
+
+@app.delete("/waterme-api/rooms/{room_id}")
+async def delete_room(room_id: str):
+    """Delete a room."""
+    for i, r in enumerate(db.config.rooms):
+        if r.id == room_id:
+            db.config.rooms.pop(i)
+            db.save()
+            return {"status": "ok"}
+    raise HTTPException(status_code=404, detail="Room not found")
 
 @app.post("/waterme-api/kill_switch/{state}")
 async def set_kill_switch(state: str):

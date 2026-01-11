@@ -43,6 +43,17 @@ def turn_off(entity_id: str):
     domain = entity_id.split('.')[0]
     return call_service(domain, "turn_off", {"entity_id": entity_id})
 
+def get_all_entities():
+    """Gets all entities from Home Assistant."""
+    try:
+        url = f"{SUPERVISOR_URL}/core/api/states"
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error fetching entities: {e}")
+        return None
+
 def check_connection():
     """Simple check to ensure Supervisor is reachable."""
     try:
@@ -51,3 +62,4 @@ def check_connection():
         return response.status_code == 200
     except:
         return False
+
