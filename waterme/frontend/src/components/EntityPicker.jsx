@@ -15,11 +15,10 @@ const EntityPicker = ({ value, onChange, domain = 'switch', label, placeholder =
         setError(false);
         try {
             const result = await api.getEntities(domain, null);
-            if (!result.entities || result.entities.length === 0) {
-                // If it's empty, maybe it's an error or just no entities of that domain
-                setEntities([]);
-            } else {
+            if (result && Array.isArray(result.entities)) {
                 setEntities(result.entities);
+            } else {
+                setEntities([]);
             }
         } catch (e) {
             console.error('Failed to load entities:', e);
@@ -45,16 +44,18 @@ const EntityPicker = ({ value, onChange, domain = 'switch', label, placeholder =
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const filteredEntities = entities.filter(e => {
+    const filteredEntities = (entities || []).filter(e => {
+        if (!e) return false;
         if (!search) return true;
         const searchLower = search.toLowerCase();
-        const entityId = e.entity_id || '';
+        const entityId = (e.entity_id || '').toLowerCase();
         const friendlyName = (e.attributes?.friendly_name || '').toLowerCase();
-        return entityId.toLowerCase().includes(searchLower) || friendlyName.includes(searchLower);
+        return entityId.includes(searchLower) || friendlyName.includes(searchLower);
     });
 
     const getDisplayName = (entityId) => {
-        const entity = entities.find(e => e.entity_id === entityId);
+        if (!entityId) return '';
+        const entity = (entities || []).find(e => e.entity_id === entityId);
         if (entity && entity.attributes?.friendly_name) {
             return entity.attributes.friendly_name;
         }
@@ -81,6 +82,7 @@ const EntityPicker = ({ value, onChange, domain = 'switch', label, placeholder =
 
                 {value && !isOpen && (
                     <button
+                        type="button"
                         onClick={(e) => { e.stopPropagation(); onChange(''); }}
                         className="absolute right-12 text-slate-700 hover:text-red-500 p-2 transition-colors"
                     >
@@ -115,7 +117,7 @@ const EntityPicker = ({ value, onChange, domain = 'switch', label, placeholder =
                             <div className="p-10 flex flex-col items-center justify-center gap-4 text-red-500">
                                 <AlertCircle size={24} />
                                 <span className="text-[10px] font-black uppercase tracking-widest">Link Failure</span>
-                                <button onClick={loadEntities} className="text-blue-500 text-[10px] font-bold underline uppercase">Retry Sync</button>
+                                <button type="button" onClick={loadEntities} className="text-blue-500 text-[10px] font-bold underline uppercase">Retry Sync</button>
                             </div>
                         ) : filteredEntities.length === 0 ? (
                             <div className="p-10 text-center">
@@ -123,7 +125,7 @@ const EntityPicker = ({ value, onChange, domain = 'switch', label, placeholder =
                             </div>
                         ) : (
                             <div className="p-2 space-y-1">
-                                {filteredEntities.map((entity) => (
+                                {filteredEntities.split ? null : filteredEntities.map((entity) => (
                                     <button
                                         key={entity.entity_id}
                                         type="button"
