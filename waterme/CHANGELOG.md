@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.3
+- **New Feature**: Fixed Light Schedules. Set explicit ON/OFF times for room photoperiods.
+- **New Feature**: Dripper Telemetry. Input dripper rates and counts to track total ML fed and ML per plant.
+- **New Feature**: Substrate Monitoring. Integrate Soil Moisture (RH) and EC sensors per zone.
+- **UI Redesign**: High-precision telemetry dashboard with predicted next run times and volume tracking.
+- **UI Enhancement**: Room-level daily volume (Liters) summary.
+
 ## 0.1.2
 - **New Feature**: Sequential Zone Staggering. Automatically enforces a 3-minute gap between zones in the same room to prevent concurrent runs.
 - **New Feature**: Activity History. Track the last 50 irrigation events with timestamps and durations.

@@ -1,112 +1,118 @@
 import React from 'react';
 import ZoneCard from './ZoneCard';
-import { Sun, Moon, Clock, History, CheckCircle2, Calendar } from 'lucide-react';
+import { Sun, Moon, Clock, History, CheckCircle2, Waves, Beaker, Droplets, Zap, ChevronRight, LayoutGrid } from 'lucide-react';
 
 const Dashboard = ({ status }) => {
     if (!status) return (
-        <div className="flex flex-col items-center justify-center mt-20 gap-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-            <div className="text-slate-500 animate-pulse">Establishing connection to WaterME Controller...</div>
+        <div className="flex flex-col items-center justify-center mt-40 gap-6">
+            <div className="relative w-20 h-20">
+                <div className="absolute inset-0 rounded-full border-4 border-blue-500/20"></div>
+                <div className="absolute inset-0 rounded-full border-4 border-blue-500 border-t-transparent animate-spin"></div>
+            </div>
+            <div className="text-xl font-black text-slate-500 uppercase tracking-[0.3em] animate-pulse">Syncing...</div>
         </div>
     );
 
     if (!status.rooms || status.rooms.length === 0) return (
-        <div className="text-center p-12 bg-slate-900/30 border border-slate-800 rounded-3xl mt-20">
-            <div className="text-slate-400 mb-4 text-xl font-semibold">Ready to Irrigated?</div>
-            <p className="text-slate-600 mb-6">You haven't configured any rooms yet.</p>
-            <button className="bg-blue-600 hover:bg-blue-500 px-6 py-2 rounded-xl font-bold transition-all shadow-lg shadow-blue-900/40">
-                Go to Configuration
+        <div className="max-w-xl mx-auto text-center p-20 bg-slate-900/40 border-2 border-slate-800 rounded-[3rem] mt-20">
+            <h2 className="text-4xl font-black text-white mb-4 italic uppercase">Systems Offline</h2>
+            <p className="text-slate-500 mb-10 font-bold">No rooms detected in the mainframe. Begin configuration sequence.</p>
+            <button className="bg-blue-600 hover:bg-blue-500 text-white px-12 py-5 rounded-3xl font-black transition-all shadow-2xl shadow-blue-900/40 uppercase tracking-widest">
+                Initialize System
             </button>
         </div>
     );
 
-    // Format relative time
-    const formatTime = (isoString) => {
-        if (!isoString) return 'Never';
-        const date = new Date(isoString);
-        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    };
-
     const timeAgo = (isoString) => {
         if (!isoString) return '';
         const seconds = Math.floor((new Date() - new Date(isoString)) / 1000);
-        if (seconds < 60) return `${seconds}s ago`;
+        if (seconds < 60) return 'Just now';
         if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
         return `${Math.floor(seconds / 3600)}h ago`;
     };
 
     return (
-        <div className="flex flex-col gap-10">
-            {/* Top Stats Overview */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-slate-900/40 border border-slate-800 p-6 rounded-3xl backdrop-blur-md">
-                    <div className="flex items-center gap-3 text-emerald-400 mb-2">
-                        <CheckCircle2 size={24} />
-                        <span className="font-bold text-lg">System Active</span>
-                    </div>
-                    <div className="text-slate-500 text-sm">All sensors reporting nominal. Monitoring {status.rooms.length} rooms.</div>
-                </div>
-
-                <div className="bg-slate-900/40 border border-slate-800 p-6 rounded-3xl backdrop-blur-md md:col-span-2">
-                    <div className="flex items-center gap-3 text-blue-400 mb-4">
+        <div className="flex flex-col gap-12">
+            {/* Global Telemetry Header */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="md:col-span-3 bg-slate-900/30 border border-slate-800/60 p-8 rounded-[2.5rem] backdrop-blur-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity"><LayoutGrid size={120} /></div>
+                    <div className="flex items-center gap-4 text-blue-400 mb-6 px-1">
                         <History size={20} />
-                        <span className="font-bold">Recent Activity</span>
+                        <span className="font-black text-[10px] uppercase tracking-[0.3em]">Live Irrigation Stream</span>
                     </div>
-                    <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-                        {status.history && status.history.length > 0 ? (
-                            status.history.slice(0, 5).map((event, idx) => (
-                                <div key={idx} className="flex-shrink-0 bg-slate-950/50 border border-slate-800/50 px-4 py-2 rounded-2xl flex flex-col min-w-[140px]">
-                                    <div className="text-xs text-slate-500 font-medium mb-1">{timeAgo(event.timestamp)}</div>
-                                    <div className="text-sm font-bold text-white truncate">{event.zone_name}</div>
-                                    <div className="text-[10px] text-blue-400 uppercase tracking-widest">{event.type} • {event.duration_sec}s</div>
+                    <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide px-1">
+                        {status.history?.length > 0 ? (
+                            status.history.slice(0, 8).map((event, idx) => (
+                                <div key={idx} className="flex-shrink-0 bg-slate-950/80 border border-slate-800/80 p-5 rounded-[2rem] flex flex-col min-w-[200px] hover:border-blue-500/30 transition-all duration-300 shadow-xl">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className="text-[10px] font-black text-slate-700 uppercase">{timeAgo(event.timestamp)}</span>
+                                        <span className="bg-blue-600/10 text-blue-500 text-[8px] px-2 py-0.5 rounded-full font-black uppercase">{event.type}</span>
+                                    </div>
+                                    <div className="text-lg font-black text-white truncate mb-1">{event.zone_name}</div>
+                                    <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                        <Droplets size={10} className="text-blue-500" /> {event.volume_ml_total}ml total
+                                    </div>
+                                    <div className="text-[9px] font-black text-emerald-500/70 uppercase tracking-tighter mt-1">
+                                        {event.volume_ml_per_plant}ml per plant
+                                    </div>
                                 </div>
                             ))
                         ) : (
-                            <div className="text-slate-600 text-sm italic">No recent events logged yet.</div>
+                            <div className="py-10 px-4 text-slate-700 font-black uppercase text-xs tracking-widest italic">Waiting for initial trigger...</div>
                         )}
                     </div>
                 </div>
+
+                <div className="bg-slate-900/30 border border-slate-800/60 p-8 rounded-[2.5rem] backdrop-blur-2xl flex flex-col justify-center gap-2">
+                    <div className="text-[10px] font-black text-emerald-500 uppercase tracking-[0.2em] mb-2 flex items-center gap-2">
+                        <CheckCircle2 size={16} /> Heartbeat
+                    </div>
+                    <div className="text-4xl font-black text-white tracking-tighter">ONLINE</div>
+                    <div className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">Syncing every 2 seconds</div>
+                </div>
             </div>
 
-            {/* Room Displays */}
+            {/* Room Telemetry */}
             {status.rooms.map(room => (
-                <div key={room.id} className="relative bg-slate-900/20 border border-slate-800 p-8 rounded-[2rem] overflow-hidden group">
-                    {/* Decorative Background Glow */}
-                    <div className="absolute -top-24 -right-24 w-64 h-64 bg-blue-500/5 blur-[120px] pointer-events-none group-hover:bg-blue-500/10 transition-colors duration-700"></div>
+                <div key={room.id} className="relative bg-slate-900/10 border border-slate-800/50 p-10 rounded-[4rem] overflow-hidden group/room">
+                    {/* Atmospheric Glow */}
+                    <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/5 blur-[150px] pointer-events-none group-hover/room:bg-blue-600/10 transition-all duration-1000"></div>
 
-                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
-                        <div className="relative">
-                            <h2 className="text-4xl font-black text-white flex items-center gap-4">
-                                {room.name}
-                                <span className="text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-3 py-1 rounded-full flex items-center gap-2">
-                                    <Sun size={14} className="animate-pulse" /> P1 PHASE
-                                </span>
-                            </h2>
-                            <div className="flex items-center gap-2 text-slate-500 text-sm mt-2 font-mono">
-                                <Clock size={14} /> Last Run: {room.last_zone_run_time ? formatTime(room.last_zone_run_time) : 'Never'}
-                                <span className="text-slate-700 ml-2">|</span>
-                                <span className="text-blue-500/70">{room.lights_on_entity}</span>
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-12 gap-10 relative z-10">
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-4">
+                                <h2 className="text-6xl font-black text-white tracking-tighter uppercase italic">{room.name}</h2>
+                                <div className="bg-emerald-500 h-2 w-2 rounded-full animate-pulse shadow-[0_0_10px_#10b981]"></div>
+                            </div>
+                            <div className="flex flex-wrap gap-6 items-center">
+                                <div className="flex items-center gap-2 bg-slate-950/60 border border-slate-800/50 px-4 py-2 rounded-2xl">
+                                    <Sun size={14} className="text-orange-400" />
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        {room.use_fixed_schedule ? `${room.lights_on_time} - ${room.lights_off_time}` : 'Sensor Based'}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-2 text-slate-600 text-[10px] font-black tracking-widest uppercase">
+                                    <Clock size={14} /> Last Activity: {room.last_zone_run_time ? new Date(room.last_zone_run_time).toLocaleTimeString() : 'Waiting...'}
+                                </div>
                             </div>
                         </div>
 
-                        {/* Visual Phase Timeline */}
-                        <div className="w-full md:w-80">
-                            <div className="flex justify-between items-end mb-2">
-                                <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Irrigation Progress</span>
-                                <span className="text-[10px] font-bold text-slate-500">60% COMPLETED</span>
-                            </div>
-                            <div className="h-3 bg-slate-800/50 rounded-full border border-slate-800/50 p-0.5 relative overflow-hidden">
-                                <div className="absolute top-0 bottom-0 left-0 w-[60%] bg-gradient-to-r from-blue-600 to-cyan-500 rounded-full shadow-[0_0_15px_rgba(59,130,246,0.5)]"></div>
-                            </div>
-                            <div className="flex justify-between mt-2 px-1">
-                                <div className="flex items-center gap-1 text-[9px] font-bold text-blue-400"><div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div> P1</div>
-                                <div className="flex items-center gap-1 text-[9px] font-bold text-slate-600"><div className="w-1.5 h-1.5 rounded-full bg-slate-700"></div> GAP</div>
-                                <div className="flex items-center gap-1 text-[9px] font-bold text-slate-600"><div className="w-1.5 h-1.5 rounded-full bg-slate-700"></div> P2</div>
+                        {/* Summary Metrics */}
+                        <div className="flex gap-10 pr-4">
+                            <div className="flex flex-col items-end">
+                                <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest mb-1">Total Daily Volume</span>
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-4xl font-black text-white tracking-tighter">
+                                        {(room.zones.reduce((acc, z) => acc + (z.shots_today * (z.p1_volume_sec * (z.dripper_rate_ml_min / 60.0) * z.drippers_per_zone)), 0) / 1000.0).toFixed(1)}
+                                    </span>
+                                    <span className="text-blue-500 font-black text-xl italic uppercase">Liters</span>
+                                </div>
                             </div>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                         {room.zones.map(zone => (
                             <ZoneCard key={zone.id} zone={zone} />
                         ))}
