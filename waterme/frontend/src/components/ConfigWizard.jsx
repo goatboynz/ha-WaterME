@@ -6,18 +6,13 @@ import {
     Edit2,
     ChevronLeft,
     Droplets,
-    Settings2,
-    Monitor,
     Timer,
     Activity,
     Power,
-    Clock,
     HelpCircle,
-    ChevronRight,
     Search,
     ShieldCheck,
-    Cpu,
-    Zap
+    Cpu
 } from 'lucide-react';
 import EntityPicker from './EntityPicker';
 
