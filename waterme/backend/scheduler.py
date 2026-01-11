@@ -49,9 +49,9 @@ class Scheduler:
             
             # Check HA connection safety
             if not ha_client.check_connection():
-                logger.error("Lost connection to Home Assistant! Triggering safety stop.")
-                self.emergency_stop()
-                await asyncio.sleep(10)
+                # Log only once per minute, not every 10 seconds
+                logger.warning("Waiting for Home Assistant connection...")
+                await asyncio.sleep(60)
                 continue
 
             try:
