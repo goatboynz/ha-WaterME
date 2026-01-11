@@ -1,8 +1,16 @@
 #!/usr/bin/with-contenv bashio
 
-bashio::log.info "Starting WaterME Add-on..."
+bashio::log.info "Starting WaterME Irrigation Controller..."
 
-# Start the python server from /www
-bashio::log.info "Starting Web Server on port 8099..."
-cd /www
-python3 -m http.server 8099
+# Set workdir to /app where our code lives
+cd /app
+
+# Ensure we have a place for data
+mkdir -p /data
+
+bashio::log.info "Launching FastAPI Backend..."
+
+# Run uvicorn
+# --host 0.0.0.0 to bind to all interfaces (required for Ingress/Docker networking)
+# --port 8099 matches our config.yaml ingress_port
+exec uvicorn backend.server:app --host 0.0.0.0 --port 8099 --log-level info
