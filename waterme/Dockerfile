@@ -26,7 +26,6 @@ COPY backend /app/backend
 COPY --from=frontend-build /app/dist /www
 
 # Copy rootfs (S6 services)
-# Copy rootfs (S6 services)
 COPY rootfs /
 
 # Fix permissions for S6 run script
