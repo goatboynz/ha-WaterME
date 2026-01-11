@@ -1,47 +1,36 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api';
-import { Plus, Save, Trash, Edit2, ChevronLeft, Layout, Droplets, Clock } from 'lucide-react';
+import { Plus, Save, Trash, Edit2, ChevronLeft, Layout, Droplets, Clock, Settings2, Sliders, Monitor, Info } from 'lucide-react';
 import EntityPicker from './EntityPicker';
 
 const TimeInput = ({ label, value, onChange }) => {
-    // value is in seconds (float)
     const minutes = Math.floor(value / 60);
     const seconds = Math.floor(value % 60);
 
-    const handleMinChange = (v) => {
-        const m = parseInt(v) || 0;
-        onChange(m * 60 + seconds);
-    };
-
-    const handleSecChange = (v) => {
-        const s = parseInt(v) || 0;
-        onChange(minutes * 60 + s);
-    };
-
     return (
-        <div>
-            <label className="block text-xs text-slate-500 mb-1">{label}</label>
+        <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] uppercase font-black text-slate-500 tracking-widest">{label}</label>
             <div className="flex items-center gap-2">
-                <div className="flex-1 flex items-center bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
+                <div className="flex-1 group relative">
                     <input
                         type="number"
                         min="0"
                         value={minutes}
-                        onChange={(e) => handleMinChange(e.target.value)}
-                        className="w-full bg-transparent p-2 text-sm text-white focus:outline-none text-right"
+                        onChange={(e) => onChange((parseInt(e.target.value) || 0) * 60 + seconds)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-center font-bold"
                     />
-                    <span className="text-slate-500 text-xs px-1">m</span>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-600 uppercase pointer-events-none">Min</div>
                 </div>
-                <div className="flex-1 flex items-center bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
+                <div className="flex-1 group relative">
                     <input
                         type="number"
                         min="0"
                         max="59"
                         value={seconds}
-                        onChange={(e) => handleSecChange(e.target.value)}
-                        className="w-full bg-transparent p-2 text-sm text-white focus:outline-none text-right"
+                        onChange={(e) => onChange(minutes * 60 + (parseInt(e.target.value) || 0))}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-center font-bold"
                     />
-                    <span className="text-slate-500 text-xs px-1">s</span>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[9px] font-black text-slate-600 uppercase pointer-events-none">Sec</div>
                 </div>
             </div>
         </div>
@@ -58,15 +47,11 @@ const ConfigWizard = () => {
         try {
             const config = await api.getConfig();
             setRooms(config.rooms || []);
-        } catch (e) {
-            console.error('Failed to load config:', e);
-        }
+        } catch (e) { console.error(e); }
         setLoading(false);
     };
 
-    useEffect(() => {
-        loadConfig();
-    }, []);
+    useEffect(() => { loadConfig(); }, []);
 
     const startNewRoom = () => {
         setEditingRoom({
@@ -76,10 +61,6 @@ const ConfigWizard = () => {
             lights_off_entity: '',
             zones: []
         });
-    };
-
-    const editRoom = (room) => {
-        setEditingRoom(JSON.parse(JSON.stringify(room)));
     };
 
     const addZone = () => {
@@ -92,10 +73,10 @@ const ConfigWizard = () => {
                 valve_entity: '',
                 p1_shots: 5,
                 p2_shots: 0,
-                p1_volume_sec: 2.0,
-                p2_volume_sec: 2.0,
+                p1_volume_sec: 10.0,
+                p2_volume_sec: 10.0,
                 valve_delay_ms: 100,
-                stagger_minutes: 0,
+                stagger_minutes: 3,
                 shots_today: 0,
                 last_shot_time: null
             }]
@@ -108,102 +89,65 @@ const ConfigWizard = () => {
         setEditingRoom({ ...editingRoom, zones: newZones });
     };
 
-    const removeZone = (index) => {
-        const newZones = [...editingRoom.zones];
-        newZones.splice(index, 1);
-        setEditingRoom({ ...editingRoom, zones: newZones });
-    };
-
-    const handleDeleteRoom = async (roomId) => {
-        if (!window.confirm('Are you sure you want to delete this room and all its zones?')) return;
-        try {
-            await api.deleteRoom(roomId);
-            loadConfig();
-        } catch (e) {
-            alert('Failed to delete room');
-        }
-    };
-
     const handleSubmit = async (e) => {
         e.preventDefault();
-
-        // Validation: Pump is mandatory
-        const invalidZone = editingRoom.zones.find(z => !z.pump_entity);
-        if (invalidZone) {
-            alert(`Zone "${invalidZone.name}" is missing a Pump Entity. Pump is required.`);
-            return;
-        }
-
         try {
             const exists = rooms.some(r => r.id === editingRoom.id);
-            if (exists) {
-                await api.updateRoom(editingRoom.id, editingRoom);
-            } else {
-                await api.addRoom(editingRoom);
-            }
-            alert('Settings saved successfully!');
+            if (exists) await api.updateRoom(editingRoom.id, editingRoom);
+            else await api.addRoom(editingRoom);
             setEditingRoom(null);
             loadConfig();
-        } catch (e) {
-            alert('Failed to save settings');
-        }
+        } catch (e) { alert('Failed to save settings'); }
     };
 
-    if (loading) return <div className="text-center text-slate-500 mt-20">Loading configuration...</div>;
+    if (loading) return <div className="text-center text-slate-500 mt-20 animate-pulse">Loading System Config...</div>;
 
     if (!editingRoom) {
         return (
-            <div className="max-w-4xl mx-auto">
-                <div className="flex justify-between items-center mb-8">
-                    <h2 className="text-3xl font-bold text-white flex items-center gap-3">
-                        <Layout className="text-blue-500" /> Room Management
-                    </h2>
+            <div className="max-w-6xl mx-auto px-4">
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
+                    <div>
+                        <h2 className="text-5xl font-black text-white tracking-tight mb-2">Room Management</h2>
+                        <p className="text-slate-500 font-medium tracking-wide flex items-center gap-2">
+                            <Settings2 size={16} /> Configure your grow rooms and irrigation zones
+                        </p>
+                    </div>
                     <button
                         onClick={startNewRoom}
-                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg font-semibold transition-all shadow-lg shadow-blue-900/20"
+                        className="group flex items-center gap-3 bg-blue-600 hover:bg-white hover:text-blue-600 px-8 py-4 rounded-3xl font-black transition-all duration-300 shadow-[0_10px_30px_rgba(59,130,246,0.3)] hover:shadow-[0_15px_40px_rgba(255,255,255,0.2)]"
                     >
-                        <Plus size={20} /> Add New Room
+                        <Plus size={24} /> <span>ADD NEW ROOM</span>
                     </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {rooms.length === 0 ? (
-                        <div className="md:col-span-2 text-center p-12 bg-slate-900/50 border border-slate-800 rounded-2xl border-dashed">
-                            <p className="text-slate-500">No rooms configured yet. Create one to get started.</p>
+                        <div className="md:col-span-3 text-center p-20 bg-slate-900/20 border-4 border-slate-900/50 border-dashed rounded-[3rem]">
+                            <Layout className="mx-auto text-slate-800 mb-6" size={64} />
+                            <p className="text-slate-500 text-xl font-bold">No rooms found. Let's build your first irrigation setup.</p>
                         </div>
                     ) : (
                         rooms.map(room => (
-                            <div key={room.id} className="bg-slate-900 border border-slate-800 p-6 rounded-2xl group hover:border-slate-700 transition-all">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h3 className="text-xl font-bold text-white mb-1">{room.name}</h3>
-                                        <p className="text-slate-500 text-xs font-mono">{room.id}</p>
+                            <div key={room.id} className="bg-slate-900/40 border border-slate-800 p-8 rounded-[2.5rem] group hover:bg-slate-900 transition-all duration-500 relative overflow-hidden">
+                                <div className="absolute -bottom-10 -right-10 w-32 h-32 bg-blue-500/5 blur-3xl rounded-full"></div>
+                                <div className="flex justify-between items-start mb-6">
+                                    <div className="bg-blue-500/10 p-4 rounded-2xl">
+                                        <Monitor className="text-blue-500" size={32} />
                                     </div>
                                     <div className="flex gap-2">
-                                        <button
-                                            onClick={() => editRoom(room)}
-                                            className="p-2 bg-slate-800 hover:bg-blue-600/20 text-blue-400 rounded-lg transition-colors"
-                                            title="Edit Room"
-                                        >
-                                            <Edit2 size={18} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDeleteRoom(room.id)}
-                                            className="p-2 bg-slate-800 hover:bg-red-600/20 text-red-400 rounded-lg transition-colors"
-                                            title="Delete Room"
-                                        >
-                                            <Trash size={18} />
-                                        </button>
+                                        <button onClick={() => setEditingRoom(room)} className="p-3 bg-slate-800 hover:bg-blue-600 text-white rounded-2xl transition-all shadow-lg active:scale-95"><Edit2 size={20} /></button>
+                                        <button onClick={async () => { if (confirm('Delete?')) { await api.deleteRoom(room.id); loadConfig(); } }} className="p-3 bg-slate-800 hover:bg-red-600 text-white rounded-2xl transition-all shadow-lg active:scale-95"><Trash size={20} /></button>
                                     </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-slate-400">Zones:</span>
-                                        <span className="text-white font-medium">{room.zones.length}</span>
+                                <h3 className="text-2xl font-black text-white mb-2">{room.name}</h3>
+                                <div className="space-y-3 mt-6">
+                                    <div className="flex justify-between items-center py-2 border-b border-slate-800/50">
+                                        <span className="text-slate-500 text-xs font-bold uppercase tracking-widest">Active Zones</span>
+                                        <span className="text-blue-400 font-black">{room.zones.length}</span>
                                     </div>
-                                    <div className="flex justify-between text-sm">
-                                        <span className="text-slate-400">Lights On:</span>
-                                        <span className="text-slate-500 text-xs truncate max-w-[150px]">{room.lights_on_entity}</span>
+                                    <div className="flex justify-between items-center py-2">
+                                        <span className="text-slate-500 text-xs font-bold uppercase tracking-widest">Master Sensor</span>
+                                        <span className="text-slate-300 font-mono text-[10px] truncate max-w-[120px]">{room.lights_on_entity}</span>
                                     </div>
                                 </div>
                             </div>
@@ -215,174 +159,113 @@ const ConfigWizard = () => {
     }
 
     return (
-        <div className="max-w-4xl mx-auto pb-20">
-            <button
-                onClick={() => setEditingRoom(null)}
-                className="flex items-center gap-1 text-slate-400 hover:text-white mb-6 transition-colors"
-            >
-                <ChevronLeft size={20} /> Back to Rooms
+        <div className="max-w-6xl mx-auto pb-40 px-4 animate-in fade-in slide-in-from-bottom-8 duration-500">
+            <button onClick={() => setEditingRoom(null)} className="flex items-center gap-2 text-slate-500 hover:text-white mb-10 transition-all font-bold px-4 py-2 rounded-full hover:bg-slate-900">
+                <ChevronLeft size={24} /> BACK TO OVERVIEW
             </button>
 
-            <form onSubmit={handleSubmit} className="space-y-8">
-                <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
-                    <h3 className="text-xl font-bold mb-6 text-blue-400 border-b border-slate-800 pb-2">Room Configuration</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="md:col-span-2">
-                            <label className="block text-sm text-slate-400 mb-1">Room Name</label>
+            <form onSubmit={handleSubmit} className="space-y-12">
+                {/* Room Header Card */}
+                <div className="bg-slate-900 p-10 rounded-[3rem] border border-slate-800 shadow-2xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-8 text-slate-800 opacity-20"><Settings2 size={120} /></div>
+                    <div className="relative z-10 flex flex-col md:flex-row gap-10 items-end">
+                        <div className="flex-1 space-y-2 w-full">
+                            <label className="text-xs uppercase font-black text-blue-500 tracking-[0.2em] ml-1">Room Identity</label>
                             <input
                                 type="text"
-                                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-white focus:outline-none focus:border-blue-500 transition-colors"
+                                className="w-full bg-slate-950/50 border-2 border-slate-800 rounded-3xl p-6 text-2xl font-black text-white focus:outline-none focus:border-blue-600 transition-all placeholder:text-slate-800"
                                 value={editingRoom.name}
                                 onChange={e => setEditingRoom({ ...editingRoom, name: e.target.value })}
-                                placeholder="e.g. Flower Room 1"
+                                placeholder="ENTER ROOM NAME..."
                                 required
                             />
                         </div>
-                        <EntityPicker
-                            label="Lights ON Entity"
-                            value={editingRoom.lights_on_entity}
-                            onChange={(val) => setEditingRoom({ ...editingRoom, lights_on_entity: val })}
-                            domain="binary_sensor"
-                            placeholder="Select light sensor..."
-                        />
-                        <EntityPicker
-                            label="Lights OFF Entity (Optional)"
-                            value={editingRoom.lights_off_entity}
-                            onChange={(val) => setEditingRoom({ ...editingRoom, lights_off_entity: val })}
-                            domain="binary_sensor"
-                            placeholder="Select status sensor..."
-                        />
+                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
+                            <EntityPicker label="LIGHTS ON SENSOR" value={editingRoom.lights_on_entity} onChange={(val) => setEditingRoom({ ...editingRoom, lights_on_entity: val })} domain="binary_sensor" />
+                            <EntityPicker label="STATUS SENSOR (OPT)" value={editingRoom.lights_off_entity} onChange={(val) => setEditingRoom({ ...editingRoom, lights_off_entity: val })} domain="binary_sensor" />
+                        </div>
                     </div>
                 </div>
 
-                <div className="bg-slate-900 p-6 rounded-2xl border border-slate-800 shadow-xl">
-                    <div className="flex justify-between items-center mb-6 border-b border-slate-800 pb-2">
-                        <h3 className="text-xl font-bold text-emerald-400">Zone Configuration</h3>
-                        <button
-                            type="button"
-                            onClick={addZone}
-                            className="flex items-center gap-2 bg-emerald-600/10 text-emerald-400 hover:bg-emerald-600/20 px-4 py-2 rounded-lg text-sm font-semibold transition-all border border-emerald-600/30"
-                        >
-                            <Plus size={18} /> Add Zone
+                {/* Zones Section */}
+                <div className="space-y-8">
+                    <div className="flex justify-between items-center px-4">
+                        <h3 className="text-3xl font-black text-white flex items-center gap-4">
+                            <Droplets className="text-emerald-500" /> ZONE CONFIGURATION
+                        </h3>
+                        <button type="button" onClick={addZone} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-2xl font-black transition-all shadow-xl shadow-emerald-950/50">
+                            <Plus size={20} /> ADD ZONE
                         </button>
                     </div>
 
-                    <div className="flex flex-col gap-6">
-                        {editingRoom.zones.length === 0 ? (
-                            <p className="text-center p-8 text-slate-500 border border-slate-800 border-dashed rounded-xl">No zones added yet.</p>
-                        ) : (
-                            editingRoom.zones.map((zone, idx) => (
-                                <div key={zone.id} className="bg-slate-950 p-6 rounded-xl border border-slate-800 relative group animate-in fade-in slide-in-from-top-4 duration-300">
-                                    <button
-                                        type="button"
-                                        onClick={() => removeZone(idx)}
-                                        className="absolute top-4 right-4 text-slate-600 hover:text-red-400 transition-colors"
-                                    >
-                                        <Trash size={20} />
-                                    </button>
+                    <div className="grid grid-cols-1 gap-8">
+                        {editingRoom.zones.map((zone, idx) => (
+                            <div key={zone.id} className="bg-slate-900 p-10 rounded-[3rem] border border-slate-800 relative group/zone shadow-xl hover:shadow-2xl transition-all duration-500">
+                                <button type="button" onClick={() => { const nz = [...editingRoom.zones]; nz.splice(idx, 1); setEditingRoom({ ...editingRoom, zones: nz }); }} className="absolute顶-6 right-6 p-4 text-slate-700 hover:text-red-500 transition-all"><Trash size={24} /></button>
 
-                                    <div className="flex items-center gap-2 mb-6">
-                                        <Droplets className="text-emerald-500" size={20} />
-                                        <h4 className="text-lg font-bold text-white">Zone {idx + 1}</h4>
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                                    {/* Left Info */}
+                                    <div className="lg:col-span-4 space-y-6">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center font-black text-blue-500 text-xl">{idx + 1}</div>
+                                            <input value={zone.name} onChange={e => updateZone(idx, 'name', e.target.value)} className="bg-transparent border-b-2 border-slate-800 text-xl font-black focus:border-blue-600 focus:outline-none py-2 text-white" />
+                                        </div>
+                                        <div className="space-y-4 pt-4">
+                                            <EntityPicker label="PUMP CONTROL" value={zone.pump_entity} onChange={(val) => updateZone(idx, 'pump_entity', val)} domain="switch" />
+                                            <EntityPicker label="VALVE CONTROL (OPT)" value={zone.valve_entity} onChange={(val) => updateZone(idx, 'valve_entity', val)} domain="switch" />
+                                        </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        <div>
-                                            <label className="block text-xs text-slate-500 mb-1">Zone Name</label>
-                                            <input
-                                                value={zone.name}
-                                                onChange={e => updateZone(idx, 'name', e.target.value)}
-                                                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
-                                                placeholder="e.g. North Bench"
-                                            />
-                                        </div>
-
-                                        <EntityPicker
-                                            label="Pump Entity (Required)"
-                                            value={zone.pump_entity}
-                                            onChange={(val) => updateZone(idx, 'pump_entity', val)}
-                                            domain="switch"
-                                            placeholder="Select pump switch..."
-                                        />
-
-                                        <EntityPicker
-                                            label="Valve / Solenoid Entity (Optional)"
-                                            value={zone.valve_entity}
-                                            onChange={(val) => updateZone(idx, 'valve_entity', val)}
-                                            domain="switch"
-                                            placeholder="Select valve switch..."
-                                        />
-
-                                        <div>
-                                            <label className="block text-xs text-slate-500 mb-1">Valve delay after Pump (ms)</label>
-                                            <input
-                                                type="number"
-                                                value={zone.valve_delay_ms}
-                                                onChange={e => updateZone(idx, 'valve_delay_ms', parseInt(e.target.value) || 0)}
-                                                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
-                                            />
-                                        </div>
-
-                                        <div className="md:col-span-2 border-t border-slate-800 pt-4 mt-2">
-                                            <h5 className="text-sm font-semibold text-slate-400 mb-4 flex items-center gap-2">
-                                                <Clock size={14} /> P1 Configuration (Maintenance)
-                                            </h5>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <div>
-                                                    <label className="block text-xs text-slate-500 mb-1">P1 Shots Count</label>
-                                                    <input
-                                                        type="number"
-                                                        value={zone.p1_shots}
-                                                        onChange={e => updateZone(idx, 'p1_shots', parseInt(e.target.value) || 0)}
-                                                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
-                                                    />
-                                                </div>
-                                                <TimeInput
-                                                    label="P1 Shot Duration"
-                                                    value={zone.p1_volume_sec}
-                                                    onChange={(val) => updateZone(idx, 'p1_volume_sec', val)}
-                                                />
+                                    {/* Right Settings */}
+                                    <div className="lg:col-span-8 flex flex-col gap-8">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 bg-slate-950/50 p-8 rounded-[2rem] border border-slate-800/50">
+                                            <div className="flex flex-col gap-2">
+                                                <label className="text-[10px] uppercase font-black text-slate-600 tracking-widest">Zone Delay (ms)</label>
+                                                <input type="number" value={zone.valve_delay_ms} onChange={e => updateZone(idx, 'valve_delay_ms', parseInt(e.target.value) || 0)} className="bg-slate-900 border border-slate-800 rounded-xl p-3 text-white font-bold text-center focus:border-blue-500 focus:outline-none" />
+                                            </div>
+                                            <div className="flex flex-col gap-2">
+                                                <label className="text-[10px] uppercase font-black text-slate-600 tracking-widest">Stagger (min)</label>
+                                                <input type="number" value={zone.stagger_minutes} onChange={e => updateZone(idx, 'stagger_minutes', parseInt(e.target.value) || 0)} className="bg-slate-900 border border-slate-800 rounded-xl p-3 text-white font-bold text-center focus:border-blue-500 focus:outline-none" />
+                                            </div>
+                                            <div className="flex items-center gap-2 text-slate-500 text-[10px] leading-tight font-bold pt-4 px-2">
+                                                <Info size={14} className="flex-shrink-0" />
+                                                <span>STAGGER PREVENTS MULTIPLE ZONES RUNNING SIMULTANEOUSLY.</span>
                                             </div>
                                         </div>
 
-                                        <div className="md:col-span-2 border-t border-slate-800 pt-4">
-                                            <h5 className="text-sm font-semibold text-slate-400 mb-4 flex items-center gap-2">
-                                                <Clock size={14} /> P2 Configuration (Dryback)
-                                            </h5>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <div>
-                                                    <label className="block text-xs text-slate-500 mb-1">P2 Shots Count</label>
-                                                    <input
-                                                        type="number"
-                                                        value={zone.p2_shots}
-                                                        onChange={e => updateZone(idx, 'p2_shots', parseInt(e.target.value) || 0)}
-                                                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-emerald-500 transition-colors"
-                                                    />
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                                            <div className="space-y-4">
+                                                <h5 className="text-[10px] font-black text-blue-500 flex items-center gap-2"><Sliders size={12} /> MAINTENANCE (P1)</h5>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <label className="text-[10px] font-black text-slate-500 racking-widest">SHOTS</label>
+                                                        <input type="number" value={zone.p1_shots} onChange={e => updateZone(idx, 'p1_shots', parseInt(e.target.value) || 0)} className="bg-slate-950 border border-slate-800 rounded-2xl p-3 text-white font-bold text-center focus:border-blue-500 focus:outline-none" />
+                                                    </div>
+                                                    <TimeInput label="DURATION" value={zone.p1_volume_sec} onChange={(v) => updateZone(idx, 'p1_volume_sec', v)} />
                                                 </div>
-                                                <TimeInput
-                                                    label="P2 Shot Duration"
-                                                    value={zone.p2_volume_sec}
-                                                    onChange={(val) => updateZone(idx, 'p2_volume_sec', val)}
-                                                />
+                                            </div>
+                                            <div className="space-y-4">
+                                                <h5 className="text-[10px] font-black text-orange-500 flex items-center gap-2"><Sliders size={12} /> DRYBACK (P2)</h5>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <label className="text-[10px] font-black text-slate-500 racking-widest">SHOTS</label>
+                                                        <input type="number" value={zone.p2_shots} onChange={e => updateZone(idx, 'p2_shots', parseInt(e.target.value) || 0)} className="bg-slate-950 border border-slate-800 rounded-2xl p-3 text-white font-bold text-center focus:border-blue-500 focus:outline-none" />
+                                                    </div>
+                                                    <TimeInput label="DURATION" value={zone.p2_volume_sec} onChange={(v) => updateZone(idx, 'p2_volume_sec', v)} />
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            ))
-                        )}
+                            </div>
+                        ))}
                     </div>
                 </div>
 
-                <div className="flex justify-end gap-4">
-                    <button
-                        type="button"
-                        onClick={() => setEditingRoom(null)}
-                        className="px-6 py-2 rounded-lg font-semibold text-slate-400 hover:text-white transition-colors"
-                    >
-                        Cancel
-                    </button>
-                    <button type="submit" className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 px-8 py-3 rounded-lg font-bold text-white transition-all shadow-xl shadow-blue-900/40">
-                        <Save size={20} /> Save Changes
+                <div className="flex justify-end gap-6 pt-10">
+                    <button type="button" onClick={() => setEditingRoom(null)} className="px-10 py-5 rounded-3xl font-black text-slate-500 hover:text-white transition-all uppercase tracking-widest text-sm">Cancel</button>
+                    <button type="submit" className="group flex items-center gap-3 bg-blue-600 hover:bg-white hover:text-blue-600 px-12 py-5 rounded-[2.5rem] font-black transition-all duration-300 shadow-[0_20px_50px_rgba(59,130,246,0.3)] uppercase tracking-wider">
+                        <Save size={24} /> <span>SAVE CONFIGURATION</span>
                     </button>
                 </div>
             </form>

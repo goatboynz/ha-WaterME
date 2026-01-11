@@ -3,34 +3,45 @@ import os
 import logging
 from typing import List, Optional
 from pydantic import BaseModel
+from datetime import datetime
 
 CONFIG_PATH = "/data/config.json"
 logger = logging.getLogger(__name__)
 
+class Event(BaseModel):
+    timestamp: str
+    zone_name: str
+    room_name: str
+    type: str # P1, P2, Manual
+    duration_sec: float
+
 class Zone(BaseModel):
     id: str
     name: str
-    pump_entity: str  # Now mandatory
-    valve_entity: Optional[str] = None  # Now optional
-    p1_shots: int = 0
+    pump_entity: str
+    valve_entity: Optional[str] = None
+    p1_shots: int = 5
     p2_shots: int = 0
-    p1_volume_sec: float = 1.0
-    p2_volume_sec: float = 1.0
-    valve_delay_ms: int = 50  # Delay after pump starts before valve opens
-    stagger_minutes: int = 0
-    # Runtime state (not persisted)
+    p1_volume_sec: float = 10.0
+    p2_volume_sec: float = 10.0
+    valve_delay_ms: int = 100
+    stagger_minutes: int = 3 # Default 3 min stagger
+    # Runtime state (not persisted but used in API)
     last_shot_time: Optional[str] = None
     shots_today: int = 0
+    next_event_time: Optional[str] = None
 
 class Room(BaseModel):
     id: str
     name: str
     lights_on_entity: str
-    lights_off_entity: str
+    lights_off_entity: str = ""
     zones: List[Zone] = []
+    last_zone_run_time: Optional[str] = None # Tracks when any zone in this room last ran
 
 class SystemConfig(BaseModel):
     rooms: List[Room] = []
+    history: List[Event] = []
 
 class Storage:
     def __init__(self):
@@ -54,27 +65,16 @@ class Storage:
         try:
             with open(CONFIG_PATH, 'w') as f:
                 f.write(self.config.model_dump_json(indent=2))
-            logger.info("Configuration saved.")
         except Exception as e:
             logger.error(f"Failed to save config: {e}")
 
-    def get_room(self, room_id: str) -> Optional[Room]:
-        for room in self.config.rooms:
-            if room.id == room_id:
-                return room
-        return None
+    def add_history(self, event: Event):
+        self.config.history.insert(0, event)
+        self.config.history = self.config.history[:50] # Keep last 50 events
+        self.save()
 
     def add_room(self, room: Room):
         self.config.rooms.append(room)
         self.save()
-
-    def update_room(self, room: Room):
-        for i, r in enumerate(self.config.rooms):
-            if r.id == room.id:
-                self.config.rooms[i] = room
-                self.save()
-                return
-        # If not found, add it
-        self.add_room(room)
 
 db = Storage()

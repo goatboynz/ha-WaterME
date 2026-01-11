@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.2
+- **New Feature**: Sequential Zone Staggering. Automatically enforces a 3-minute gap between zones in the same room to prevent concurrent runs.
+- **New Feature**: Activity History. Track the last 50 irrigation events with timestamps and durations.
+- **UI Redesign**: Complete overhaul of the Dashboard and Room Management with a "High-Precision" aesthetic.
+- **UI Enhancement**: Added "Last Run" and "Time Ago" tracking for all zones.
+- **UI Enhancement**: Improved config editor with better layout and informative tooltips.
+
 ## 0.1.0
 - Added Room and Zone editing/deletion.
 - Integrated Home Assistant entity selection with live search.

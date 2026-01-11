@@ -5,7 +5,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import List, Optional
 
-from backend.storage import db, Room, Zone
+from backend.storage import db, Room, Zone, Event
 from backend.scheduler import scheduler
 from backend import ha_client
 
@@ -40,7 +40,8 @@ async def get_status():
     return {
         "status": "running",
         "kill_switch": scheduler._kill_switch,
-        "rooms": db.config.rooms
+        "rooms": db.config.rooms,
+        "history": db.config.history
     }
 
 @app.get("/waterme-api/config")
@@ -68,7 +69,8 @@ async def get_entities(domain: Optional[str] = None, search: Optional[str] = Non
 
 @app.post("/waterme-api/rooms")
 async def add_room(room: Room):
-    db.add_room(room)
+    db.config.rooms.append(room)
+    db.save()
     return {"status": "ok", "room": room}
 
 @app.put("/waterme-api/rooms/{room_id}")
@@ -105,7 +107,7 @@ async def manual_shot(zone_id: str):
             if zone.id == zone_id:
                 # Trigger shot in background
                 import asyncio
-                asyncio.create_task(scheduler.fire_shot(zone))
+                asyncio.create_task(scheduler.fire_shot(room, zone, zone.p1_volume_sec, "Manual"))
                 return {"status": "fired", "zone": zone.name}
     raise HTTPException(status_code=404, detail="Zone not found")
 
