@@ -11,14 +11,8 @@ export const api = {
         return res.json();
     },
 
-    async getEntities(domain = null, search = null) {
-        let url = `${API_BASE}/entities`;
-        const params = new URLSearchParams();
-        if (domain) params.append('domain', domain);
-        if (search) params.append('search', search);
-        if (params.toString()) url += `?${params.toString()}`;
-
-        const res = await fetch(url);
+    async getEntities(domain = '', search = '') {
+        const res = await fetch(`${API_BASE}/entities?domain=${domain}&search=${search}`);
         return res.json();
     },
 
@@ -47,13 +41,24 @@ export const api = {
         return res.json();
     },
 
-    async setKillSwitch(active) {
-        const res = await fetch(`${API_BASE}/kill_switch/${active}`, { method: 'POST' });
+    async setKillSwitch(state) {
+        const res = await fetch(`${API_BASE}/kill_switch/${state}`, {
+            method: 'POST'
+        });
         return res.json();
     },
 
     async manualShot(zoneId) {
-        const res = await fetch(`${API_BASE}/manual/shot/${zoneId}`, { method: 'POST' });
+        const res = await fetch(`${API_BASE}/manual/shot/${zoneId}`, {
+            method: 'POST'
+        });
+        return res.json();
+    },
+
+    async toggle(type, id, state) {
+        const res = await fetch(`${API_BASE}/toggle/${type}/${id}?state=${state}`, {
+            method: 'POST'
+        });
         return res.json();
     }
 };

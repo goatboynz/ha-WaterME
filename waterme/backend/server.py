@@ -23,7 +23,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# CORS (important for potential dev/ingress issues)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -41,7 +40,8 @@ async def get_status():
         "status": "running",
         "kill_switch": scheduler._kill_switch,
         "rooms": db.config.rooms,
-        "history": db.config.history
+        "history": db.config.history,
+        "sensor_history": db.sensor_history
     }
 
 @app.get("/waterme-api/config")
@@ -50,21 +50,15 @@ async def get_config():
 
 @app.get("/waterme-api/entities")
 async def get_entities(domain: Optional[str] = None, search: Optional[str] = None):
-    """Get entities from Home Assistant, optionally filtered by domain and search term."""
     entities = ha_client.get_all_entities()
-    if entities is None:
-        return {"entities": [], "error": "Could not connect to Home Assistant"}
+    if entities is None: return {"entities": []}
     
-    # Filter by domain if specified
     if domain:
         entities = [e for e in entities if e.get("entity_id", "").startswith(f"{domain}.")]
-    
-    # Filter by search term
     if search:
         search_lower = search.lower()
         entities = [e for e in entities if search_lower in e.get("entity_id", "").lower() 
                     or search_lower in (e.get("attributes", {}).get("friendly_name", "") or "").lower()]
-    
     return {"entities": entities}
 
 @app.post("/waterme-api/rooms")
@@ -75,17 +69,15 @@ async def add_room(room: Room):
 
 @app.put("/waterme-api/rooms/{room_id}")
 async def update_room(room_id: str, room: Room):
-    """Update an existing room."""
     for i, r in enumerate(db.config.rooms):
         if r.id == room_id:
             db.config.rooms[i] = room
             db.save()
-            return {"status": "ok", "room": room}
+            return {"status": "ok"}
     raise HTTPException(status_code=404, detail="Room not found")
 
 @app.delete("/waterme-api/rooms/{room_id}")
 async def delete_room(room_id: str):
-    """Delete a room."""
     for i, r in enumerate(db.config.rooms):
         if r.id == room_id:
             db.config.rooms.pop(i)
@@ -101,16 +93,31 @@ async def set_kill_switch(state: str):
 
 @app.post("/waterme-api/manual/shot/{zone_id}")
 async def manual_shot(zone_id: str):
-    # Find zone
     for room in db.config.rooms:
         for zone in room.zones:
             if zone.id == zone_id:
-                # Trigger shot in background
                 import asyncio
                 asyncio.create_task(scheduler.fire_shot(room, zone, zone.p1_volume_sec, "Manual"))
                 return {"status": "fired", "zone": zone.name}
     raise HTTPException(status_code=404, detail="Zone not found")
 
-# --- Static Files ---
-# Serve the React frontend from /www
+@app.post("/waterme-api/toggle/{type}/{id}")
+async def toggle_enabled(type: str, id: str, state: bool):
+    """Toggle enabled state for a room or zone."""
+    if type == "room":
+        for room in db.config.rooms:
+            if room.id == id:
+                room.enabled = state
+                db.save()
+                return {"status": "ok"}
+    elif type == "zone":
+        for room in db.config.rooms:
+            for zone in room.zones:
+                if zone.id == id:
+                    zone.enabled = state
+                    db.save()
+                    return {"status": "ok"}
+    raise HTTPException(status_code=404, detail="Not found")
+
+# Serve the React frontend
 app.mount("/", StaticFiles(directory="/www", html=True), name="static")
