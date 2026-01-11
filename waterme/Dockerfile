@@ -13,16 +13,13 @@ FROM $BUILD_FROM
 
 # Install Python and dependencies
 # Install Python and dependencies via APK (faster, no compilation)
+# Install Python and dependencies
 RUN apk add --no-cache \
     python3 \
-    py3-pip \
-    py3-fastapi \
-    py3-uvicorn \
-    py3-pydantic \
-    py3-requests
+    py3-pip
 
-# COPY backend/requirements.txt /tmp/
-# RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
+COPY backend/requirements.txt /tmp/
+RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
 
 # Copy backend code
 COPY backend /app/backend
