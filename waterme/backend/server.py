@@ -32,7 +32,7 @@ app.add_middleware(
 
 # --- API Endpoints ---
 
-@app.get("/api/status")
+@app.get("/waterme-api/status")
 async def get_status():
     """Returns the current state of the system."""
     return {
@@ -41,22 +41,22 @@ async def get_status():
         "rooms": db.config.rooms
     }
 
-@app.get("/api/config")
+@app.get("/waterme-api/config")
 async def get_config():
     return db.config
 
-@app.post("/api/rooms")
+@app.post("/waterme-api/rooms")
 async def add_room(room: Room):
     db.add_room(room)
     return {"status": "ok", "room": room}
 
-@app.post("/api/kill_switch/{state}")
+@app.post("/waterme-api/kill_switch/{state}")
 async def set_kill_switch(state: str):
     is_active = (state.lower() == "true" or state == "1")
     scheduler.set_kill_switch(is_active)
     return {"kill_switch": is_active}
 
-@app.post("/api/manual/shot/{zone_id}")
+@app.post("/waterme-api/manual/shot/{zone_id}")
 async def manual_shot(zone_id: str):
     # Find zone
     for room in db.config.rooms:
