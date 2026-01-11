@@ -1,0 +1,8 @@
+#!/usr/bin/with-contenv bashio
+
+bashio::log.info "Starting WaterME Add-on..."
+
+# Start the python server from /www
+bashio::log.info "Starting Web Server on port 8099..."
+cd /www
+python3 -m http.server 8099
