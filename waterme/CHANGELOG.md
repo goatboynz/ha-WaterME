@@ -1,5 +1,10 @@
-<!-- https://developers.home-assistant.io/docs/add-ons/presentation#keeping-a-changelog -->
+# Changelog
+
+## 0.0.2
+
+- Fix: Critical build fixes (System packages, Dockerfile permissions).
+- Fix: Frontend build process.
 
 ## 0.0.1
 
-- Initial release with "Coming Soon" landing page.
+- Initial release.

@@ -1,5 +1,5 @@
 name: "WaterME"
-version: "0.0.1"
+version: "0.0.2"
 slug: "waterme"
 description: "WaterME Irrigation Controller Add-on"
 url: "https://github.com/goatboynz/ha-WaterME"
