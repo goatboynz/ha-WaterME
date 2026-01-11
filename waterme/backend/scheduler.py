@@ -2,8 +2,8 @@ import asyncio
 import logging
 import time
 from datetime import datetime, timedelta
-import ha_client
-from storage import db, Room, Zone
+from backend import ha_client
+from backend.storage import db, Room, Zone
 
 logger = logging.getLogger(__name__)
 

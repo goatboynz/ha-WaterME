@@ -4,8 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import logging
 from contextlib import asynccontextmanager
 
-from storage import db, Room, Zone
-from scheduler import scheduler
+from backend.storage import db, Room, Zone
+from backend.scheduler import scheduler
 
 # Logging setup
 logging.basicConfig(level=logging.INFO)
