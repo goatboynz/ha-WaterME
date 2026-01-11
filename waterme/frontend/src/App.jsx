@@ -2,7 +2,19 @@ import React, { useEffect, useState } from 'react';
 import Dashboard from './components/Dashboard';
 import ConfigWizard from './components/ConfigWizard';
 import { api } from './api';
-import { Settings, LayoutDashboard, AlertOctagon } from 'lucide-react';
+import {
+    Settings,
+    LayoutDashboard,
+    AlertOctagon,
+    Zap,
+    Droplets,
+    BarChart3,
+    ShieldAlert,
+    Cpu,
+    Search,
+    ChevronDown,
+    Activity
+} from 'lucide-react';
 
 function App() {
     const [view, setView] = useState('dashboard');
@@ -23,49 +35,110 @@ function App() {
         setStatus(newStatus);
     };
 
+    const NavButton = ({ id, label, icon: Icon }) => (
+        <button
+            onClick={() => setView(id)}
+            className={`w-full flex items-center gap-4 px-6 py-4 rounded-2xl transition-all duration-300 relative group ${view === id
+                    ? 'bg-white/5 text-white'
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}
+        >
+            <Icon size={20} className={view === id ? 'text-orange-500' : 'group-hover:text-slate-300'} />
+            <span className="font-bold text-sm tracking-tight">{label}</span>
+            {view === id && (
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-orange-500 rounded-r-full shadow-[2px_0_10px_rgba(249,115,22,0.5)]" />
+            )}
+        </button>
+    );
+
     return (
-        <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-8 font-sans">
-            <header className="flex justify-between items-center mb-8">
-                <div>
-                    <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
-                        WaterME
-                    </h1>
-                    <p className="text-slate-400">Precision Crop Steering</p>
+        <div className="min-h-screen bg-[#0a0a0a] text-slate-100 flex font-sans selection:bg-orange-500/30">
+            {/* SIDEBAR */}
+            <aside className="w-72 border-r border-white/5 flex flex-col p-6 h-screen sticky top-0 shrink-0">
+                <div className="flex items-center gap-3 px-2 mb-12">
+                    <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex items-center justify-center shadow-[0_0_20px_rgba(249,115,22,0.3)]">
+                        <Droplets className="text-white" size={24} />
+                    </div>
+                    <span className="text-xl font-black italic tracking-tighter uppercase leading-none">WaterME</span>
                 </div>
 
-                <div className="flex gap-4 items-center">
-                    {status?.kill_switch && (
-                        <div className="animate-pulse flex items-center gap-2 text-red-500 font-bold border border-red-500/50 px-4 py-2 rounded-full bg-red-950/30">
-                            <AlertOctagon /> KILL SWITCH ACTIVE
-                        </div>
-                    )}
+                <div className="relative mb-8">
+                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" />
+                    <input
+                        type="text"
+                        placeholder="Quick search..."
+                        className="w-full bg-white/[0.03] border border-white/5 rounded-xl py-3 pl-11 pr-4 text-xs font-bold focus:outline-none focus:border-white/10 transition-colors"
+                    />
+                </div>
 
+                <nav className="flex-1 space-y-2">
+                    <div className="px-6 mb-4">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-700 italic">Navigation</span>
+                    </div>
+                    <NavButton id="dashboard" label="Dashboard" icon={LayoutDashboard} />
+                    <NavButton id="analytics" label="Statistics & History" icon={BarChart3} />
+                    <NavButton id="config" label="Room Control" icon={Zap} />
+                    <NavButton id="settings" label="System Config" icon={Settings} />
+                </nav>
+
+                <div className="mt-auto space-y-6">
+                    {/* KILL SWITCH STATUS */}
                     <button
                         onClick={toggleKillSwitch}
-                        className={`p-3 rounded-xl transition-all ${status?.kill_switch ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-800 hover:bg-slate-700 text-red-400'}`}
-                        title="Global Kill Switch"
+                        className={`w-full flex items-center gap-4 px-6 py-5 rounded-[2rem] border-2 transition-all duration-500 ${status?.kill_switch
+                                ? 'bg-red-500 border-red-400 text-white shadow-[0_0_30px_rgba(239,68,68,0.4)]'
+                                : 'bg-white/[0.02] border-white/5 text-red-500 hover:bg-red-500/10'
+                            }`}
                     >
-                        <AlertOctagon size={24} />
+                        <AlertOctagon size={20} className={status?.kill_switch ? 'animate-pulse' : ''} />
+                        <span className="font-extrabold text-[10px] uppercase tracking-[0.2em] italic">
+                            {status?.kill_switch ? 'Mainframe Lock' : 'Emergency Stop'}
+                        </span>
                     </button>
 
-                    <button
-                        onClick={() => setView('dashboard')}
-                        className={`p-3 rounded-xl transition-all ${view === 'dashboard' ? 'bg-blue-600' : 'bg-slate-800 hover:bg-slate-700'}`}
-                    >
-                        <LayoutDashboard size={24} />
-                    </button>
-                    <button
-                        onClick={() => setView('config')}
-                        className={`p-3 rounded-xl transition-all ${view === 'config' ? 'bg-emerald-600' : 'bg-slate-800 hover:bg-slate-700'}`}
-                    >
-                        <Settings size={24} />
-                    </button>
+                    {/* USER INFO / SYSTEM STATUS */}
+                    <div className="bg-white/[0.03] p-5 rounded-[2.5rem] border border-white/5 flex items-center gap-4 group cursor-pointer hover:bg-white/[0.05] transition-all">
+                        <div className="w-12 h-12 rounded-full border-2 border-slate-800 bg-slate-900 flex items-center justify-center p-1 overflow-hidden relative">
+                            <div className="absolute inset-0 bg-blue-500/20 blur-sm"></div>
+                            <Cpu className="text-blue-500 relative z-10" size={24} />
+                            {/* STATUS LED */}
+                            <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-[#121212] z-20 shadow-[0_0_10px_#10b981]"></div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <h4 className="font-black text-white text-xs uppercase italic truncate">System OS</h4>
+                            <p className="text-[10px] font-bold text-slate-600 truncate uppercase mt-0.5">v0.1.7 Standby</p>
+                        </div>
+                        <ChevronDown size={16} className="text-slate-700 group-hover:text-slate-300 transition-colors" />
+                    </div>
                 </div>
-            </header>
+            </aside>
 
-            <main>
-                {view === 'dashboard' && <Dashboard status={status} />}
-                {view === 'config' && <ConfigWizard />}
+            {/* MAIN CONTENT AREA */}
+            <main className="flex-1 min-h-screen overflow-y-auto">
+                <header className="px-10 py-8 flex justify-between items-center bg-[#0a0a0a]/50 backdrop-blur-3xl sticky top-0 z-[100]">
+                    <div className="flex items-center gap-4">
+                        <h2 className="text-4xl font-black italic uppercase tracking-tighter leading-none">
+                            {view === 'dashboard' ? 'Overview' : view === 'config' ? 'Command Room' : 'Systems'}
+                        </h2>
+                        <div className="bg-white/[0.03] border border-white/5 px-4 py-2 rounded-xl flex items-center gap-3 text-xs font-black text-slate-500 italic uppercase cursor-pointer hover:white/10 transition-all">
+                            <Activity size={14} className="text-orange-500" />
+                            Jan 11, 2026 → Current
+                            <ChevronDown size={14} />
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-6">
+                        <div className="bg-white px-6 py-2.5 rounded-full text-black font-black text-xs uppercase tracking-widest italic flex items-center gap-3 cursor-pointer shadow-xl shadow-white/10 active:scale-95 transition-all">
+                            <ShieldAlert size={16} />
+                            Main Network
+                        </div>
+                    </div>
+                </header>
+
+                <div className="px-10">
+                    {view === 'dashboard' && <Dashboard status={status} />}
+                    {view === 'config' && <ConfigWizard />}
+                </div>
             </main>
         </div>
     );

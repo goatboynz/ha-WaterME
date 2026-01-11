@@ -1,6 +1,15 @@
 # Changelog
 
-## [0.1.6] - 2026-01-11
+## [0.1.8] - 2026-01-11
+- **UI/UX Mega-Update**: Rebuilt the entire interface from the ground up inspired by modern fintech dashboards ("Vaultify" aesthetic).
+- **Sidebar Navigation**: Implemented a persistent sidebar for clearer navigation and system status monitoring.
+- **Fintech Summary Cards**: New high-fidelity cards for volume and moisture tracking with real-time trending indicators.
+- **"Active Zones" Table**: Replaced zone cards with a professional table view for better data density and control accessibility.
+- **Enhanced Charting**: Area charts now use splines, gradients, and custom tooltips for a premium look.
+- **Outfit Typography**: Switched to 'Outfit' font family for a modern, sleek feel.
+- **Refined Config Wizard**: Split-screen configuration layout for rooms and hydraulic segments.
+
+## [0.1.7] - 2026-01-11
 - **UI/UX Overhaul**: Redesigned Dashboard and Config Wizard for a much cleaner, professional "Pro Command" look.
 - **Fixed Layout Issues**: Resolved squashed inputs and overlapping labels in the configuration wizard.
 - **Improved Entity Picker**: Enhanced robustness and styling of the HA entity selection component.
