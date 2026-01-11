@@ -19,7 +19,7 @@ RUN apk add --no-cache \
     py3-pip
 
 COPY backend/requirements.txt /tmp/
-RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
+RUN pip3 install --no-cache-dir --break-system-packages -r /tmp/requirements.txt
 
 # Copy backend code
 COPY backend /app/backend
